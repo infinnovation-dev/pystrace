@@ -86,7 +86,7 @@ def analyze_systime(input_file, output_file=None, bin_size=0.1, \
 	bins_per_process = dict()
 
 	for e in strace_file.content:
-		if e.pid not in bins_per_process.keys():
+		if e.pid not in list(bins_per_process.keys()):
 			bins = [0] * num_bins
 			bins_per_process[e.pid] = bins
 		else:
@@ -98,7 +98,7 @@ def analyze_systime(input_file, output_file=None, bin_size=0.1, \
 		bin_start = int(math.floor(t_start / bin_size))
 		bin_end = int(math.ceil(t_end / bin_size))  # exclusive
 
-		for i in xrange(bin_start, bin_end):
+		for i in range(bin_start, bin_end):
 			bin_t_start = i * bin_size
 			bin_t_end   = bin_t_start + bin_size
 			b = bin_size
@@ -109,14 +109,14 @@ def analyze_systime(input_file, output_file=None, bin_size=0.1, \
 
 	# Print the result
 
-	pids = strace_file.processes.keys()
+	pids = list(strace_file.processes.keys())
 	
 	header = ["TIME"]
 	for p in pids:
 		header.append("[%d] %s" % (p, strace_file.processes[p].name))
 	strace_utils.csv_write_row_array(f_out, header)
 
-	for i in xrange(0, num_bins):
+	for i in range(0, num_bins):
 		data = [i * bin_size]
 		for p in pids:
 			data.append(bins_per_process[p][i] / bin_size)

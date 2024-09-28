@@ -202,8 +202,8 @@ class StraceInputStream:
 				elif c in [' ', '\t']:
 					continue
 				else:
-					print "C:" + current_arg
-					print arguments
+					print("C:" + current_arg)
+					print(arguments)
 					raise Exception(("'%s' found where comma expected; " \
 							+ "offending string: %s") % (c, arguments_str))
 				continue
@@ -255,11 +255,11 @@ class StraceInputStream:
 		return arguments
 
 
-	def next(self):
+	def __next__(self):
 		'''
 		Return the next complete entry. Raise StopIteration if done
 		'''
-		line = self.f_in.next()
+		line = next(self.f_in)
 		if line is None:
 			raise StopIteration
 			
@@ -271,12 +271,12 @@ class StraceInputStream:
 			if self.line_no == 1:
 				raise Exception("The first line needs to be valid")
 			else:
-				return self.next()
+				return next(self)
 		if not line[0].isdigit():
 			if self.line_no == 1:
 				raise Exception("The first line needs to be valid")
 			else:
-				return self.next()
+				return next(self)
 		
 		
 		# Get the PID (if available)
@@ -298,7 +298,7 @@ class StraceInputStream:
 		if line.endswith("---"):
 			r = re_extract_signal.match(line, pos_start)
 			if r is not None:
-				return self.next()
+				return next(self)
 		
 		
 		# Unfinished and resumed syscalls
@@ -309,12 +309,12 @@ class StraceInputStream:
 				raise Exception("Invalid \"unfinished\" statement (line %d)"
 					% self.line_no)
 			self.unfinished_syscalls[pid] = r.group(1)
-			return self.next()
+			return next(self)
 		
 		r = re_extract_resumed.match(line, pos_start)
 		if r is not None:
 			was_unfinished = True
-			if pid not in self.unfinished_syscalls.keys() \
+			if pid not in list(self.unfinished_syscalls.keys()) \
 				or self.unfinished_syscalls[pid] is None:
 				raise Exception("No line to resume (line %d)" % self.line_no)
 			line = self.unfinished_syscalls[pid] + r.group(2)
@@ -466,7 +466,7 @@ class StraceFile:
 		for entry in strace_stream:
 			
 			self.have_pids = strace_stream.have_pids
-			if entry.pid not in self.processes.keys():
+			if entry.pid not in list(self.processes.keys()):
 				self.processes[entry.pid] = StraceTracedProcess(entry.pid, None)
 			if self.processes[entry.pid].name is None:
 				if entry.syscall_name == "execve":
