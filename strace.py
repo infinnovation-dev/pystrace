@@ -65,6 +65,9 @@ re_extract_resumed \
 re_extract_signal \
 		= re.compile(r"\s*(\d+\.\d+) --- (\w+) (?:.*?) ---$")
 
+re_extract_exited \
+		= re.compile(r"\s*(\d+\.\d+) \+\+\+ exited with (\d+) \+\+\+$")
+
 re_extract_arguments_and_return_value_none \
 		= re.compile(r"\((.*)\)[ \t]*= (\?)$")
 
@@ -287,7 +290,13 @@ class StraceInputStream:
 			r = re_extract_signal.match(line, pos_start)
 			if r is not None:
 				return next(self)
-		
+
+		# Process exited (ignored)
+
+		if line.endswith("+++"):
+			r = re_extract_exited.match(line, pos_start)
+			if r is not None:
+				return next(self)
 		
 		# Unfinished and resumed syscalls
 		
