@@ -89,6 +89,8 @@ re_extract_arguments_and_return_value_ext \
 re_extract_arguments_and_return_value_ext_hex \
 		= re.compile(r"\((.*)\)[ \t]*= (-?0[xX][a-fA-F\d]+) \(([^()]+)\)$")
 
+re_data = \
+		re.compile(r" \| [a-f\d]+  ([ a-f\d]{50})")
 
 #
 # A strace entry
@@ -99,7 +101,7 @@ class StraceEntry:
 	'''
 
 	def __init__(self, pid, timestamp, was_unfinished, elapsed_time,
-				 syscall_name, syscall_arguments, return_value):
+				 syscall_name, syscall_arguments, return_value, data=None):
 		self.pid = pid
 		self.timestamp = timestamp
 		self.was_unfinished = was_unfinished
@@ -107,6 +109,7 @@ class StraceEntry:
 		self.syscall_name = syscall_name
 		self.syscall_arguments = syscall_arguments
 		self.return_value = return_value
+		self.data = data
 		self.category = self.__get_category()
 
 	
@@ -155,7 +158,7 @@ class StraceInputStream:
 
 class StraceParser:
 	def __init__(self, stream):
-		self.f_in = stream
+		self.f_in = with_lookahead(stream)
 		self.line_no = 0
 		self.have_pids = False
 		self.unfinished_syscalls = dict()		# PID --> line
@@ -249,13 +252,13 @@ class StraceParser:
 
 
 	def parse(self):
-		for line in self.f_in:
+		for line, next_line in self.f_in:
 			self.line_no += 1
-			entry = self._parse_line(line)
+			entry = self._parse_line(line, next_line)
 			if entry:
 				yield entry
 
-	def _parse_line(self, line):
+	def _parse_line(self, line, next_line):
 		'''
 		Return the next complete entry. Raise StopIteration if done
 		'''
@@ -401,12 +404,22 @@ class StraceParser:
 		# Extract the arguments
 		
 		arguments = self.__parse_arguments(arguments_str)
-		
-		
+
+		# Parse hexadecimal dump from e.g. "-e write=1"
+
+		chunks = []
+		while next_line.startswith(' |'):
+			m_data = re_data.match(next_line)
+			sbytes = m_data.group(1)
+			chunk = bytes(int(xx,16) for xx in sbytes.split())
+			chunks.append(chunk)
+			line, next_line = next(self.f_in)
+		data = b''.join(chunks) if chunks else None
+
 		# Finish
 		
 		return StraceEntry(pid, timestamp, was_unfinished, elapsed_time,
-						   syscall_name, arguments, return_value)
+						   syscall_name, arguments, return_value, data)
 	
 
 #
@@ -496,3 +509,21 @@ class StraceFile:
 
 		if isinstance(input, io.TextIOBase):
 			strace_stream.close()
+
+def with_lookahead(gen, final=None):
+	"""Generate current and next items from generator.
+	Return final as synthetoc next item for last.
+	"""
+	# itertools.pairwise is similar, but loses last item
+	it = iter(gen)
+	try:
+		pending = next(it)
+	except StopIteration:
+		return
+	while True:
+		try:
+			cur, pending = pending, next(it)
+		except StopIteration:
+			yield pending, final
+			return
+		yield cur, pending
