@@ -38,6 +38,7 @@
 
 import re
 import sys
+import io
 
 import strace_utils
 
@@ -46,55 +47,42 @@ import strace_utils
 # Initialize regular expressions
 #
 
-global re_get_pid
 re_get_pid \
 		= re.compile(r"(\d+) .*")
 
-global re_extract
 re_extract \
 		= re.compile(r"\s*(\d+\.\d+) (\w+)(\(.*) <(.+)>$")
 
-global re_extract_no_elapsed
 re_extract_no_elapsed \
 		= re.compile(r"\s*(\d+\.\d+) (\w+)(\(.*)$")
 
-global re_extract_unfinished
 re_extract_unfinished \
 		= re.compile(r"\s*(\d+\.\d+ .*) <unfinished \.\.\.>$")
 
-global re_extract_resumed
 re_extract_resumed \
 		= re.compile(r"\s*(\d+\.\d+) <\.\.\. [\a-zA-Z\d]+ resumed>(.*)$")
 
-global re_extract_signal
 re_extract_signal \
 		= re.compile(r"\s*(\d+\.\d+) --- (\w+) \(([\w ]+)\) @ (\d)+ \((\d+)\) ---$")
 
-global re_extract_arguments_and_return_value_none
 re_extract_arguments_and_return_value_none \
 		= re.compile(r"\((.*)\)[ \t]*= (\?)$")
 
-global re_extract_arguments_and_return_value_ok
 re_extract_arguments_and_return_value_ok \
 		= re.compile(r"\((.*)\)[ \t]*= (-?\d+)$")
 
-global re_extract_arguments_and_return_value_ok_hex
 re_extract_arguments_and_return_value_ok_hex \
 		= re.compile(r"\((.*)\)[ \t]*= (-?0[xX][a-fA-F\d]+)$")
 
-global re_extract_arguments_and_return_value_error
 re_extract_arguments_and_return_value_error \
 		= re.compile(r"\((.*)\)[ \t]*= (-?\d+) (\w+) \([\w ]+\)$")
 
-global re_extract_arguments_and_return_value_error_unknown
 re_extract_arguments_and_return_value_error_unknown \
 		= re.compile(r"\((.*)\)[ \t]*= (\?) (\w+) \([\w ]+\)$")
 
-global re_extract_arguments_and_return_value_ext
 re_extract_arguments_and_return_value_ext \
 		= re.compile(r"\((.*)\)[ \t]*= (-?\d+) \(([^()]+)\)$")
 
-global re_extract_arguments_and_return_value_ext_hex
 re_extract_arguments_and_return_value_ext_hex \
 		= re.compile(r"\((.*)\)[ \t]*= (-?0[xX][a-fA-F\d]+) \(([^()]+)\)$")
 
@@ -147,11 +135,11 @@ class StraceInputStream:
 		object or file name)
 		'''
 		self.input = input
-		if type(input) == file:
+		if isinstance(input, io.TextIOBase):
 			self.f_in = input
-		elif input == None:
+		elif input is None:
 			self.f_in = sys.stdin
-		elif type(input) == str:
+		elif isinstance(input, str):
 			self.f_in = open(input)
 		else:
 			raise Exception("Invalid type of argument \"input\"")
@@ -466,7 +454,7 @@ class StraceFile:
 		for entry in strace_stream:
 			
 			self.have_pids = strace_stream.have_pids
-			if entry.pid not in list(self.processes.keys()):
+			if entry.pid not in self.processes:
 				self.processes[entry.pid] = StraceTracedProcess(entry.pid, None)
 			if self.processes[entry.pid].name is None:
 				if entry.syscall_name == "execve":
@@ -502,5 +490,5 @@ class StraceFile:
 
 		# Close
 
-		if type(input) == file:
+		if isinstance(input, io.TextIOBase):
 			strace_stream.close()
