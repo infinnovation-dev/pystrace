@@ -60,7 +60,7 @@ def convert2csv(input_file, output_file=None, separator=',', quote='"'):
 	# Open the files
 	
 	if input_file is not None:
-		f_in = open(input_file, "r")
+		f_in = input_file
 	else:
 		f_in = sys.stdin
 	
