@@ -127,36 +127,38 @@ class StraceEntry:
 # An input stream
 #
 class StraceInputStream:
-	'''
-	A strace input stream
-	'''
-
-	
 	def __init__(self, input):
 		'''
-		Initialize (open) the strace input stream from the given input (file
+		Create the strace input stream from the given input (file-like
 		object or file name)
 		'''
-		self.input = input
 		if isinstance(input, io.TextIOBase):
-			self.f_in = input
+			self._parse(input)
 		elif input is None:
-			self.f_in = sys.stdin
+			self._parse(input)
 		elif isinstance(input, str):
-			self.f_in = open(input)
+			with open(input) as f:
+				self._parse(f)
 		else:
-			raise Exception("Invalid type of argument \"input\"")
+			raise TypeError("Invalid type of argument \"input\"")
+
+	def _parse(self, stream):
+		parser = StraceParser(stream)
+		self.entries = list(parser.parse())
+		self.have_pids = parser.have_pids
+
+	def __iter__(self):
+		return iter(self.entries)
+
+	def close(self):
+		pass
+
+class StraceParser:
+	def __init__(self, stream):
+		self.f_in = stream
 		self.line_no = 0
 		self.have_pids = False
 		self.unfinished_syscalls = dict()		# PID --> line
-
-
-	def __iter__(self):
-		'''
-		Return an iterator
-		'''
-		return self
-
 
 	def __parse_arguments(self, arguments_str, include_quotes=True,
 			include_ellipsis=True):
@@ -246,28 +248,30 @@ class StraceInputStream:
 		return arguments
 
 
-	def __next__(self):
+	def parse(self):
+		for line in self.f_in:
+			self.line_no += 1
+			entry = self._parse_line(line)
+			if entry:
+				yield entry
+
+	def _parse_line(self, line):
 		'''
 		Return the next complete entry. Raise StopIteration if done
 		'''
-		line = next(self.f_in)
-		if line is None:
-			raise StopIteration
-			
 		line = line.strip()
-		self.line_no += 1
 		pos_start = 0
 		
 		if line == "":
 			if self.line_no == 1:
 				raise Exception("The first line needs to be valid")
 			else:
-				return next(self)
+				return
 		if not line[0].isdigit():
 			if self.line_no == 1:
 				raise Exception("The first line needs to be valid")
 			else:
-				return next(self)
+				return
 		
 		
 		# Get the PID (if available)
@@ -289,14 +293,14 @@ class StraceInputStream:
 		if line.endswith("---"):
 			r = re_extract_signal.match(line, pos_start)
 			if r is not None:
-				return next(self)
+				return
 
 		# Process exited (ignored)
 
 		if line.endswith("+++"):
 			r = re_extract_exited.match(line, pos_start)
 			if r is not None:
-				return next(self)
+				return
 		
 		# Unfinished and resumed syscalls
 		
@@ -306,7 +310,7 @@ class StraceInputStream:
 				raise Exception("Invalid \"unfinished\" statement (line %d)"
 					% self.line_no)
 			self.unfinished_syscalls[pid] = r.group(1)
-			return next(self)
+			return
 		
 		r = re_extract_resumed.match(line, pos_start)
 		if r is not None:
@@ -404,15 +408,6 @@ class StraceInputStream:
 		return StraceEntry(pid, timestamp, was_unfinished, elapsed_time,
 						   syscall_name, arguments, return_value)
 	
-	
-	def close(self):
-		'''
-		Close the input stream (unless it is sys.stdin)
-		'''
-		if self.f_in is not sys.stdin:
-			self.f_in.close()
-		self.f_in = None
-
 
 #
 # A process in a strace output
