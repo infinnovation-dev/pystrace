@@ -63,7 +63,7 @@ re_extract_resumed \
 		= re.compile(r"\s*(\d+\.\d+) <\.\.\. [\a-zA-Z\d]+ resumed>(.*)$")
 
 re_extract_signal \
-		= re.compile(r"\s*(\d+\.\d+) --- (\w+) \(([\w ]+)\) @ (\d)+ \((\d+)\) ---$")
+		= re.compile(r"\s*(\d+\.\d+) --- (\w+) (?:.*?) ---$")
 
 re_extract_arguments_and_return_value_none \
 		= re.compile(r"\((.*)\)[ \t]*= (\?)$")
@@ -281,7 +281,7 @@ class StraceInputStream:
 			pos_start = len(m_pid.group(1)) + 1
 				
 		
-		# Signals
+		# Signals (ignored)
 		
 		if line.endswith("---"):
 			r = re_extract_signal.match(line, pos_start)

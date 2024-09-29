@@ -110,6 +110,7 @@
 164844 1727596765.642396 close(2)       = 0
 164844 1727596765.642431 exit_group(0)  = ?
 164843 1727596765.642616 <... wait4 resumed>[{WIFEXITED(s) && WEXITSTATUS(s) == 0}], 0, NULL) = 164844
+164843 1727596765.642645 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=164844, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
 164843 1727596765.642674 rt_sigreturn({mask=[]}) = 164844
 164843 1727596765.642716 wait4(-1, 0x7ffe735b93ac, WNOHANG, NULL) = -1 ECHILD (No child processes)
 164843 1727596765.642758 exit_group(0)  = ?
