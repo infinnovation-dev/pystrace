@@ -66,7 +66,7 @@ re_extract_signal \
 		= re.compile(r"\s*(\d+\.\d+) --- (\w+) (?:.*?) ---$")
 
 re_extract_exited \
-		= re.compile(r"\s*(\d+\.\d+) \+\+\+ exited with (\d+) \+\+\+$")
+		= re.compile(r"\s*(\d+\.\d+) \+\+\+ (exited|killed).*? \+\+\+$")
 
 re_extract_arguments_and_return_value_none \
 		= re.compile(r"\((.*)\)[ \t]*= (\?)$")
@@ -306,7 +306,10 @@ class StraceParser:
 				return
 		
 		# Unfinished and resumed syscalls
-		
+
+		if line.endswith("<detached ...>"):
+			return
+
 		if line.endswith("<unfinished ...>"):
 			r = re_extract_unfinished.match(line, pos_start)
 			if r is None:
@@ -414,6 +417,7 @@ class StraceParser:
 			chunk = bytes(int(xx,16) for xx in sbytes.split())
 			chunks.append(chunk)
 			line, next_line = next(self.f_in)
+			self.line_no += 1
 		data = b''.join(chunks) if chunks else None
 
 		# Finish
